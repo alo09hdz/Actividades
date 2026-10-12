@@ -1,0 +1,32 @@
+{
+  "name": "Nexus App Shell - Progressive Web App",
+  "short_name": "NexusShell",
+  "description": "Arquitectura App Shell responsiva y Splash Screen nativa verificable en Chrome DevTools.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0a0f1d",
+  "theme_color": "#6366f1",
+  "lang": "es-ES",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": [
+    "productivity",
+    "utilities",
+    "developer"
+  ]
+}
