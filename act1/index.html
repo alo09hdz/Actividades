@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nexus PWA - Manifiesto & Metadatos de Instalación</title>
+  <meta name="description" content="Aplicación Web Progresiva con Web App Manifest y metadatos de instalación completos en la Actividad 1.">
+
+  <!-- Enlace al Web App Manifest requerido -->
+  <link rel="manifest" href="manifest.json">
+
+  <!-- Metadatos de Instalación y Compatibilidad Móvil / PWA -->
+  <meta name="theme-color" content="#4f46e5">
+  <meta name="background-color" content="#0f172a">
+  <meta name="mobile-web-app-capable" content="yes">
+  
+  <!-- Soporte para iOS / Safari PWA -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="NexusApp">
+  <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+  <link rel="apple-touch-icon" sizes="512x512" href="icons/icon-512x512.png">
+
+  <!-- Iconos estándar para navegador y marcadores -->
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192x192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512x512.png">
+
+  <!-- Estilos CSS -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="bg-grid-overlay"></div>
+
+  <div class="container">
+    <!-- Header / Hero -->
+    <header>
+      <div class="badge-wrapper">
+        <span class="status-dot"></span>
+        <span class="badge-text">PWA Manifest Configurado & Activo</span>
+      </div>
+      <h1>Web App Manifest & Instalación</h1>
+      <p class="hero-subtitle">
+        Configuración integral del archivo <code>manifest.json</code>, metadatos de instalación móvil y paquete de iconos optimizados en 192x192 y 512x512 px.
+      </p>
+
+      <div class="hero-actions">
+        <button id="btn-install" class="btn btn-primary" type="button">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          Instalar Aplicación (PWA)
+        </button>
+        <a href="manifest.json" target="_blank" class="btn btn-secondary">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <polyline points="10 9 9 9 8 9"></polyline>
+          </svg>
+          Ver manifest.json
+        </a>
+      </div>
+    </header>
+
+    <!-- Main Grid -->
+    <main class="dashboard-grid">
+      <!-- Columna Izquierda: Propiedades Clave del Manifiesto -->
+      <section class="glass-card col-span-7">
+        <div class="card-header">
+          <h2 class="card-title">
+            <span class="card-title-icon">⚙</span>
+            Propiedades Clave del Manifiesto
+          </h2>
+          <span class="badge-tag" id="current-display-mode">Modo Standalone Configurado</span>
+        </div>
+
+        <div class="properties-list">
+          <div class="property-item">
+            <div class="prop-key">
+              <span>name</span>
+              <span class="badge-tag">Nombre Completo</span>
+            </div>
+            <div class="prop-val">Nexus PWA - Aplicación Web Progresiva</div>
+          </div>
+
+          <div class="property-item">
+            <div class="prop-key">
+              <span>short_name</span>
+              <span class="badge-tag">Pantalla de Inicio</span>
+            </div>
+            <div class="prop-val">NexusApp</div>
+          </div>
+
+          <div class="property-item">
+            <div class="prop-key">
+              <span>start_url</span>
+              <span class="badge-tag">Ruta de Inicio</span>
+            </div>
+            <div class="prop-val"><code>./index.html</code></div>
+          </div>
+
+          <div class="property-item">
+            <div class="prop-key">
+              <span>display</span>
+              <span class="badge-tag">Modo de Vista</span>
+            </div>
+            <div class="prop-val">
+              <span style="color: #38bdf8;">standalone</span>
+              <span style="font-size:0.75rem; color:var(--text-muted);">(Sin barra de navegador)</span>
+            </div>
+          </div>
+
+          <div class="property-item">
+            <div class="prop-key">
+              <span>theme_color</span>
+              <span class="badge-tag">Barra de Estado</span>
+            </div>
+            <div class="prop-val">
+              <span class="color-preview-chip" style="background-color: #4f46e5;"></span>
+              <code>#4f46e5</code>
+            </div>
+          </div>
+
+          <div class="property-item">
+            <div class="prop-key">
+              <span>background_color</span>
+              <span class="badge-tag">Pantalla de Carga</span>
+            </div>
+            <div class="prop-val">
+              <span class="color-preview-chip" style="background-color: #0f172a;"></span>
+              <code>#0f172a</code>
+            </div>
+          </div>
+        </div>
+
+        <!-- Checklist de Validación PWA -->
+        <div style="margin-top: 2rem;">
+          <h3 style="font-size: 1rem; color: #a5b4fc; margin-bottom: 0.75rem;">Verificación de Requisitos de Instalación</h3>
+          
+          <div class="checklist-item">
+            <div class="check-icon">✓</div>
+            <div class="check-content">
+              <h4>Archivo manifest.json enlazado en el HTML</h4>
+              <p>Etiqueta <code>&lt;link rel="manifest" href="manifest.json"&gt;</code> presente en el <code>&lt;head&gt;</code>.</p>
+            </div>
+          </div>
+
+          <div class="checklist-item">
+            <div class="check-icon">✓</div>
+            <div class="check-content">
+              <h4>Metadatos de visualización autónoma (standalone)</h4>
+              <p>Permite ejecutar la aplicación como app de escritorio o móvil independiente sin controles de navegador.</p>
+            </div>
+          </div>
+
+          <div class="checklist-item">
+            <div class="check-icon">✓</div>
+            <div class="check-content">
+              <h4>Paquete de iconos en formato PNG (192px y 512px)</h4>
+              <p>Generados con propósito multipropósito y maskable para adaptación a cualquier sistema operativo.</p>
+            </div>
+          </div>
+
+          <div class="checklist-item">
+            <div class="check-icon">✓</div>
+            <div class="check-content">
+              <h4>Service Worker y estrategia de caché</h4>
+              <p id="sw-status-text">Verificando registro del Service Worker...</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Columna Derecha: Vista Previa Simulador Standalone -->
+      <section class="glass-card col-span-5" style="display: flex; flex-direction: column; align-items: center; justify-content: center;">
+        <div class="card-header" style="width: 100%;">
+          <h2 class="card-title">
+            <span class="card-title-icon">📱</span>
+            Simulación Standalone
+          </h2>
+          <span class="badge-tag" id="install-status">Instalable</span>
+        </div>
+
+        <div class="device-simulator">
+          <div class="device-notch">
+            <div class="notch-camera"></div>
+          </div>
+          <div class="device-screen">
+            <!-- Barra de estado simulada con theme_color -->
+            <div class="device-statusbar">
+              <span>09:41</span>
+              <span>5G 100%</span>
+            </div>
+            
+            <div class="device-content">
+              <img src="icons/icon-192x192.png" alt="Nexus App Icon" class="device-logo-img">
+              <div class="device-app-title">Nexus PWA</div>
+              <span class="device-badge-standalone">● standalone mode</span>
+              <p style="font-size: 0.75rem; color: #94a3b8; line-height: 1.4; padding: 0 0.5rem;">
+                Experiencia inmersiva a pantalla completa sin URL bar, con tema <code>#4f46e5</code> y fondo <code>#0f172a</code>.
+              </p>
+            </div>
+
+            <div class="device-indicator"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Paquete de Iconos PNG Generados e Integrados -->
+      <section class="glass-card col-span-12">
+        <div class="card-header">
+          <h2 class="card-title">
+            <span class="card-title-icon">🖼</span>
+            Paquete de Iconos Integrados (PNG)
+          </h2>
+          <span class="badge-tag">Formatos Requeridos</span>
+        </div>
+
+        <div class="icons-container">
+          <!-- Icono 192x192 -->
+          <div class="icon-card">
+            <div class="icon-preview-box">
+              <img src="icons/icon-192x192.png" alt="Icono PWA 192x192">
+            </div>
+            <div class="icon-dimension">192 × 192 px</div>
+            <div class="icon-meta">Pantalla de inicio / Menú de aplicaciones</div>
+            <span class="badge-tag" style="margin-bottom: 1rem;">purpose: "any maskable"</span>
+            <a href="icons/icon-192x192.png" download="icon-192x192.png" class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.5rem 1rem;">
+              Descargar 192px PNG
+            </a>
+          </div>
+
+          <!-- Icono 512x512 -->
+          <div class="icon-card">
+            <div class="icon-preview-box">
+              <img src="icons/icon-512x512.png" alt="Icono PWA 512x512">
+            </div>
+            <div class="icon-dimension">512 × 512 px</div>
+            <div class="icon-meta">Splash Screen de inicio / Tiendas de aplicaciones</div>
+            <span class="badge-tag" style="margin-bottom: 1rem;">purpose: "any maskable"</span>
+            <a href="icons/icon-512x512.png" download="icon-512x512.png" class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.5rem 1rem;">
+              Descargar 512px PNG
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <!-- Código Manifest y Enlaces HTML -->
+      <section class="glass-card col-span-12">
+        <div class="card-header">
+          <h2 class="card-title">
+            <span class="card-title-icon">&lt;/&gt;</span>
+            Código del Archivo manifest.json
+          </h2>
+          <button class="btn-copy" onclick="copyManifestJson()">Copiar Código JSON</button>
+        </div>
+
+        <div class="code-box">
+          <pre id="manifest-code-content">{
+  "name": "Nexus PWA - Aplicación Web Progresiva",
+  "short_name": "NexusApp",
+  "description": "Aplicación Web Progresiva (PWA) moderna con Web App Manifest y metadatos de instalación completos.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0f172a",
+  "theme_color": "#4f46e5",
+  "lang": "es-ES",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": [
+    "utilities",
+    "productivity"
+  ]
+}</pre>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>Actividad 1 &bull; Web App Manifest & Metadatos de Instalación &bull; Nexus PWA</p>
+    </footer>
+  </div>
+
+  <div id="toast-notification" class="toast-msg"></div>
+
+  <!-- Scripts -->
+  <script src="app.js"></script>
+</body>
+</html>
