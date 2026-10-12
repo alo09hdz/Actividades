@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Noticias Tecnológicas | Ruta Remota Dinámica</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="header-inner">
+      <a href="../index.html" class="brand-section">
+        <img src="../img/app-logo.png" alt="Logo" class="brand-logo-img">
+        <div class="brand-text">
+          <h1>Noticias del Servidor Central</h1>
+          <p>Ruta Remota Dinámica (No precacheada)</p>
+        </div>
+      </a>
+      <div class="header-status-group">
+        <span class="badge badge-success">🌐 Servido desde la Red</span>
+        <a href="../index.html" class="btn btn-sm btn-outline">← Volver al Dashboard</a>
+      </div>
+    </div>
+  </header>
+
+  <div class="app-container">
+    <section class="section-card">
+      <div class="hero-tag">
+        <span>📡 Contenido Remoto</span>
+        <span>&bull;</span>
+        <span>Requiere Conexión Activa</span>
+      </div>
+      <h2 class="hero-title" style="font-size: 1.8rem; margin-top: 0.5rem;">Boletín de Innovación PWA y Service Workers</h2>
+      <p style="color: #94a3b8; margin-bottom: 1.5rem;">
+        Esta página se encuentra alojada en el servidor y <strong>NO forma parte del precacheo del App Shell</strong>. 
+        Si estás viendo este contenido, significa que tu conexión a internet está funcionando normalmente.
+      </p>
+
+      <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem;">
+        <h4 style="color: #6ee7b7; margin-bottom: 0.5rem;">🧪 Prueba el Interceptor Offline:</h4>
+        <p style="font-size: 0.88rem; color: #cbd5e1;">
+          1. Abre DevTools (<kbd>F12</kbd>) y ve a la pestaña <strong>Network</strong>.<br>
+          2. Cambia el desplegable de red a <strong>Offline</strong>.<br>
+          3. Recarga esta página con <kbd>Ctrl + F5</kbd>.<br>
+          4. <strong>Resultado:</strong> Como esta página no está en caché y no hay internet, el Service Worker interceptará la petición y te mostrará la <strong>plantilla personalizada offline.html</strong>.
+        </p>
+      </div>
+
+      <a href="../index.html" class="btn btn-primary">Volver a la Pantalla Principal</a>
+    </section>
+  </div>
+</body>
+</html>

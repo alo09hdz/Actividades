@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Modo Sin Conexión | Plantilla Fallback PWA</title>
+  
+  <meta name="description" content="Plantilla HTML personalizada servida por el Service Worker cuando se detecta pérdida de conexión a internet y el recurso no existe en caché.">
+  <meta name="theme-color" content="#f43f5e">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" type="image/png" href="./icons/icon-192.png">
+
+  <!-- Estilos integrados y autónomos para garantizar carga 100% offline -->
+  <link rel="stylesheet" href="./style.css">
+  <style>
+    /* Estilos específicos de la plantilla offline */
+    .offline-page-wrapper {
+      min-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 2rem 1rem;
+    }
+
+    .offline-card {
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(244, 63, 94, 0.35);
+      box-shadow: 0 10px 40px rgba(244, 63, 94, 0.15), 0 0 80px rgba(0, 0, 0, 0.6);
+      border-radius: 24px;
+      padding: 2.75rem 2rem;
+      max-width: 680px;
+      width: 100%;
+      position: relative;
+      overflow: hidden;
+      animation: fadeInCard 0.4s ease-out;
+    }
+
+    @keyframes fadeInCard {
+      from { opacity: 0; transform: translateY(15px) scale(0.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .offline-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #f43f5e, #f59e0b, #ec4899);
+    }
+
+    .offline-beacon {
+      position: relative;
+      width: 90px;
+      height: 90px;
+      margin: 0 auto 1.5rem auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: rgba(244, 63, 94, 0.12);
+      border: 2px solid rgba(244, 63, 94, 0.4);
+    }
+
+    .radar-pulse {
+      position: absolute;
+      inset: -10px;
+      border-radius: 50%;
+      border: 2px solid rgba(244, 63, 94, 0.3);
+      animation: radarRing 2.2s infinite cubic-bezier(0.215, 0.61, 0.355, 1);
+    }
+
+    .radar-pulse-2 {
+      position: absolute;
+      inset: -20px;
+      border-radius: 50%;
+      border: 1px solid rgba(245, 158, 11, 0.2);
+      animation: radarRing 2.2s infinite 0.7s cubic-bezier(0.215, 0.61, 0.355, 1);
+    }
+
+    @keyframes radarRing {
+      0% { transform: scale(0.7); opacity: 1; }
+      100% { transform: scale(1.4); opacity: 0; }
+    }
+
+    .beacon-icon {
+      font-size: 2.5rem;
+      z-index: 2;
+    }
+
+    .offline-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.3rem 0.85rem;
+      border-radius: 9999px;
+      background: rgba(244, 63, 94, 0.15);
+      border: 1px solid rgba(244, 63, 94, 0.35);
+      color: #fda4af;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 1.25rem;
+    }
+
+    .offline-title {
+      font-family: var(--font-heading, 'Outfit', sans-serif);
+      font-size: 2.1rem;
+      font-weight: 800;
+      color: #ffffff;
+      line-height: 1.2;
+      margin-bottom: 0.85rem;
+    }
+
+    .offline-desc {
+      color: #94a3b8;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      margin-bottom: 1.75rem;
+    }
+
+    .reconnection-banner {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      background: rgba(16, 185, 129, 0.2);
+      border: 1px solid rgba(16, 185, 129, 0.5);
+      color: #6ee7b7;
+      padding: 0.85rem 1.25rem;
+      border-radius: 12px;
+      margin-bottom: 1.5rem;
+      font-weight: 600;
+      font-size: 0.9rem;
+      animation: pulseAnim 1.8s infinite;
+    }
+
+    .offline-actions {
+      display: flex;
+      gap: 0.85rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 2rem;
+    }
+
+    .tech-details-box {
+      background: rgba(11, 17, 32, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 1.15rem;
+      text-align: left;
+      font-size: 0.82rem;
+    }
+
+    .tech-title {
+      display: flex;
+      justify-content: space-between;
+      color: #cbd5e1;
+      font-weight: 600;
+      margin-bottom: 0.65rem;
+      font-family: var(--font-mono, monospace);
+    }
+
+    .tech-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.35rem 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      color: #94a3b8;
+    }
+
+    .tech-val {
+      font-family: var(--font-mono, monospace);
+      color: #f8fafc;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Encabezado simple de navegación -->
+  <header class="app-header">
+    <div class="header-inner">
+      <a href="./index.html" class="brand-section">
+        <img src="./img/app-logo.png" alt="Logo" class="brand-logo-img">
+        <div class="brand-text">
+          <h1>PWA Fallback Interceptor</h1>
+          <p>Actividad 5 &bull; Contingencia Offline</p>
+        </div>
+      </a>
+      <div class="header-status-group">
+        <div id="live-net-badge" class="badge badge-error">
+          <span class="pulse-dot"></span> Modo Sin Conexión
+        </div>
+        <a href="./index.html" class="btn btn-sm btn-outline">
+          ← Volver al Dashboard
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Vista Principal de Fallback -->
+  <div class="app-container">
+    <div class="offline-page-wrapper">
+      
+      <div class="offline-card">
+        <!-- Baliza animada -->
+        <div class="offline-beacon">
+          <div class="radar-pulse"></div>
+          <div class="radar-pulse-2"></div>
+          <span class="beacon-icon">📡</span>
+        </div>
+
+        <div class="offline-tag">
+          <span>⚠️ Interceptor Fetch Activado</span>
+        </div>
+
+        <h2 class="offline-title">No hay conexión a Internet</h2>
+
+        <p class="offline-desc">
+          El recurso que solicitaste no se encuentra en la memoria local y el intento de conexión a la red falló.
+          El <strong>Service Worker</strong> interceptó el evento <code>fetch</code> y ha generado esta 
+          <strong>plantilla de contingencia offline</strong> para evitar el pantallazo de error predeterminado del navegador.
+        </p>
+
+        <!-- Banner reactivo de reconexión -->
+        <div id="reconnect-banner" class="reconnection-banner">
+          <span>🎉 ¡Conexión a internet reestablecida! Recargando en 2 segundos...</span>
+        </div>
+
+        <!-- Botones de Acción -->
+        <div class="offline-actions">
+          <button class="btn btn-primary" onclick="retryConnection()">
+            🔄 Reintentar Conexión
+          </button>
+          <a href="./index.html" class="btn btn-outline">
+            🏠 Ir a la Pantalla de Inicio
+          </a>
+        </div>
+
+        <!-- Ficha Técnica de Diagnóstico -->
+        <div class="tech-details-box">
+          <div class="tech-title">
+            <span>⚙️ DIAGNÓSTICO DEL SERVICE WORKER</span>
+            <span style="color: #f43f5e;">STATUS 200 (FALLBACK)</span>
+          </div>
+          <div class="tech-row">
+            <span>Estrategia:</span>
+            <span class="tech-val">Network Falling Back to Custom Offline Page</span>
+          </div>
+          <div class="tech-row">
+            <span>Ruta solicitada:</span>
+            <span id="requested-url-text" class="tech-val">Ruta no cacheada</span>
+          </div>
+          <div class="tech-row">
+            <span>Momento de la captura:</span>
+            <span id="offline-timestamp" class="tech-val">--</span>
+          </div>
+          <div class="tech-row" style="border-bottom: none;">
+            <span>Estado de reconexión:</span>
+            <span id="reconnect-status" class="tech-val" style="color: #f59e0b;">Monitoreando red...</span>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // Inicializar telemetría de la plantilla offline
+    document.addEventListener('DOMContentLoaded', () => {
+      const urlText = document.getElementById('requested-url-text');
+      const timeText = document.getElementById('offline-timestamp');
+      const netBadge = document.getElementById('live-net-badge');
+      const banner = document.getElementById('reconnect-banner');
+      const statusText = document.getElementById('reconnect-status');
+
+      if (urlText) urlText.textContent = window.location.pathname;
+      if (timeText) timeText.textContent = new Date().toLocaleTimeString();
+
+      // Escuchar eventos de red en tiempo real
+      window.addEventListener('online', () => {
+        if (netBadge) {
+          netBadge.className = 'badge badge-success';
+          netBadge.textContent = '¡En Línea!';
+        }
+        if (banner) banner.style.display = 'flex';
+        if (statusText) {
+          statusText.textContent = 'En Línea - Conectado';
+          statusText.style.color = '#10b981';
+        }
+        setTimeout(() => {
+          window.location.reload();
+        }, 1800);
+      });
+
+      window.addEventListener('offline', () => {
+        if (netBadge) {
+          netBadge.className = 'badge badge-error';
+          netBadge.textContent = 'Modo Sin Conexión';
+        }
+        if (banner) banner.style.display = 'none';
+        if (statusText) {
+          statusText.textContent = 'Sin Conexión (Offline)';
+          statusText.style.color = '#f43f5e';
+        }
+      });
+    });
+
+    function retryConnection() {
+      if (navigator.onLine) {
+        window.location.reload();
+      } else {
+        alert('Aún no se detecta conexión a internet. Verifica tu conexión Wi-Fi o datos móviles.');
+      }
+    }
+  </script>
+</body>
+</html>

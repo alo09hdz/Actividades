@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Actividad 5: Interceptor de Peticiones y Manejo de Estado Offline</title>
+  
+  <!-- PWA & SEO Meta Tags -->
+  <meta name="description" content="Implementación de interceptor de peticiones fetch y plantilla HTML personalizada de Modo Sin Conexión para Progressive Web Apps.">
+  <meta name="theme-color" content="#f43f5e">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" type="image/png" href="./icons/icon-192.png">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+
+  <!-- Estilos del App Shell -->
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+
+  <!-- ====================================================================
+       APP SHELL: ENCABEZADO PERSISTENTE (HEADER)
+       ==================================================================== -->
+  <header class="app-header">
+    <div class="header-inner">
+      <a href="./index.html" class="brand-section" title="Recargar Dashboard">
+        <img src="./img/app-logo.png" alt="Logo" class="brand-logo-img">
+        <div class="brand-text">
+          <h1>PWA Offline Interceptor</h1>
+          <p>Actividad 5 &bull; Fallback en Fetch &amp; Plantilla Offline</p>
+        </div>
+      </a>
+
+      <div class="header-status-group">
+        <div id="sw-status-badge" class="badge badge-warning" title="Estado del Service Worker">
+          <span class="pulse-dot"></span> Verificando SW...
+        </div>
+        <div id="network-status-badge" class="badge badge-success" title="Conectividad de Red">
+          <span class="pulse-dot"></span> En Línea (Online)
+        </div>
+        <a href="./offline.html" target="_blank" class="btn btn-sm btn-outline" title="Ver la vista offline de contingencia">
+          👁️ Ver offline.html
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- ====================================================================
+       CONTENEDOR PRINCIPAL
+       ==================================================================== -->
+  <div class="app-container">
+
+    <!-- ====================================================================
+         HERO SECTION: MANEJO DE ESTADO OFFLINE & INTERCEPTOR
+         ==================================================================== -->
+    <section class="hero-card">
+      <div class="hero-grid">
+        <div class="hero-text-content">
+          <div class="hero-tag">
+            <span>🛡️ Service Worker Fetch Interceptor</span>
+            <span>&bull;</span>
+            <span>Fallback HTML Personalizado</span>
+          </div>
+          <h2 class="hero-title">Manejo de Estado Offline &amp; Respuestas Alternativas</h2>
+          <p class="hero-desc">
+            Cuando un usuario navega sin conexión a una ruta que <strong>no existe en la memoria caché</strong>, 
+            el navegador tradicionalmente mostraría la pantalla genérica de error ("Sin conexión"). 
+            Con este <strong>interceptor en el evento <code>fetch</code></strong>, el Service Worker detecta la pérdida de red 
+            y genera de forma inmediata la <strong>plantilla HTML personalizada de 'Modo Sin Conexión'</strong> 
+            (<code>offline.html</code>), garantizando una experiencia de usuario continua y profesional.
+          </p>
+          <div class="hero-actions">
+            <button class="btn btn-primary" onclick="runSandboxTest()">
+              ⚡ Probar Interceptor en Sandbox
+            </button>
+            <a href="./secciones/noticias.html" class="btn btn-outline">
+              🚀 Navegar a Ruta No Cacheada
+            </a>
+            <a href="#devtools-guide" class="btn btn-outline">
+              🛠️ Guía Chrome DevTools
+            </a>
+          </div>
+        </div>
+
+        <div class="hero-illustration-preview">
+          <img src="./img/offline-art.png" alt="Offline Art" class="offline-art-img">
+          <span class="art-caption">Plantilla de contingencia preconfigurada: <code>offline.html</code></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         MÉTRICAS EN TIEMPO REAL
+         ==================================================================== -->
+    <section class="metrics-row">
+      <div class="metric-card">
+        <div class="metric-icon-box icon-emerald">📶</div>
+        <div class="metric-info">
+          <span class="metric-label">Conectividad de Red</span>
+          <strong id="net-state-val" class="metric-value">EN LÍNEA</strong>
+          <span class="metric-sub">Sincronizado con navigator.onLine</span>
+        </div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-icon-box icon-rose">🛡️</div>
+        <div class="metric-info">
+          <span class="metric-label">Service Worker</span>
+          <strong id="sw-state-val" class="metric-value">INICIALIZANDO</strong>
+          <span class="metric-sub" id="sw-scope-val">scope: ./</span>
+        </div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-icon-box icon-amber">📄</div>
+        <div class="metric-info">
+          <span class="metric-label">Plantilla Offline</span>
+          <strong class="metric-value">offline.html</strong>
+          <span class="metric-sub">Precargada en evento install</span>
+        </div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-icon-box icon-indigo">🎯</div>
+        <div class="metric-info">
+          <span class="metric-label">Peticiones Evaluadas</span>
+          <strong id="intercept-count-val" class="metric-value">0 solicitudes</strong>
+          <span class="metric-sub">Capturas en el Sandbox</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         SECCIÓN 1: CATÁLOGO DE RUTAS PARA PRUEBA DE NAVEGACIÓN REAL
+         ==================================================================== -->
+    <section class="section-card">
+      <div class="section-header">
+        <div class="section-title-group">
+          <span class="section-icon">🧭</span>
+          <div>
+            <h3 class="section-title">Laboratorio de Navegación Real (Online vs Offline)</h3>
+            <p class="section-subtitle">
+              Haz clic en estas rutas con conexión a internet y luego pon el navegador en <strong>Modo Offline</strong> para ver el fallback.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="routes-grid">
+        <!-- Tarjeta 1: App Shell en Caché -->
+        <div class="route-card">
+          <div>
+            <div class="route-card-header">
+              <span class="route-title">1. App Shell (En Caché)</span>
+              <span class="badge badge-emerald">Cache-First</span>
+            </div>
+            <span class="route-path">./index.html</span>
+            <p class="route-desc" style="margin-top: 0.5rem;">
+              Esta página principal está guardada en la caché durante el evento <code>install</code>. Funciona siempre, con o sin internet.
+            </p>
+          </div>
+          <div class="route-actions">
+            <a href="./index.html" class="btn btn-sm btn-outline">Abrir Ruta</a>
+          </div>
+        </div>
+
+        <!-- Tarjeta 2: Ruta Dinámica No Cacheada (Noticias) -->
+        <div class="route-card highlight-fallback">
+          <div>
+            <div class="route-card-header">
+              <span class="route-title">2. Ruta Dinámica Remota</span>
+              <span class="badge badge-rose">Fallback a offline.html</span>
+            </div>
+            <span class="route-path">./secciones/noticias.html</span>
+            <p class="route-desc" style="margin-top: 0.5rem;">
+              <strong>Online:</strong> Carga las noticias remotas del servidor.<br>
+              <strong>Offline:</strong> ¡El SW intercepta la pérdida de red y renderiza la plantilla <code>offline.html</code>!
+            </p>
+          </div>
+          <div class="route-actions">
+            <a href="./secciones/noticias.html" class="btn btn-sm btn-primary">Navegar a Noticias</a>
+          </div>
+        </div>
+
+        <!-- Tarjeta 3: Reporte Dinámico No Cacheado -->
+        <div class="route-card highlight-fallback">
+          <div>
+            <div class="route-card-header">
+              <span class="route-title">3. Reporte Dinámico</span>
+              <span class="badge badge-rose">Fallback a offline.html</span>
+            </div>
+            <span class="route-path">./secciones/reporte.html</span>
+            <p class="route-desc" style="margin-top: 0.5rem;">
+              Página no precacheada. Al intentar navegar en modo offline, se sirve la vista personalizada de contingencia con estado 200.
+            </p>
+          </div>
+          <div class="route-actions">
+            <a href="./secciones/reporte.html" class="btn btn-sm btn-primary">Navegar a Reporte</a>
+          </div>
+        </div>
+
+        <!-- Tarjeta 4: API / JSON Fallback -->
+        <div class="route-card">
+          <div>
+            <div class="route-card-header">
+              <span class="route-title">4. Endpoint de Datos (API)</span>
+              <span class="badge badge-amber">Fallback JSON</span>
+            </div>
+            <span class="route-path">/api/telemetria</span>
+            <p class="route-desc" style="margin-top: 0.5rem;">
+              Cuando la red falla, el interceptor devuelve un objeto JSON estructurado con código 503 y datos de contingencia.
+            </p>
+          </div>
+          <div class="route-actions">
+            <button class="btn btn-sm btn-outline" onclick="document.getElementById('sandbox-url-select').value='/api/telemetria'; runSandboxTest();">
+              Probar en Sandbox
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         SECCIÓN 2: SANDBOX INTERACTIVO DE INTERCEPCIÓN FETCH
+         ==================================================================== -->
+    <section class="section-card">
+      <div class="section-header">
+        <div class="section-title-group">
+          <span class="section-icon">🔬</span>
+          <div>
+            <h3 class="section-title">Sandbox del Interceptor Fetch (Visor Integrado)</h3>
+            <p class="section-subtitle">
+              Ejecuta peticiones directamente desde la interfaz y previsualiza la respuesta que genera el Service Worker.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="sandbox-container">
+        <!-- Controles -->
+        <div class="sandbox-controls">
+          <div class="form-group">
+            <label for="sandbox-url-select" class="form-label">Selecciona el recurso a solicitar:</label>
+            <select id="sandbox-url-select" class="custom-select" onchange="document.getElementById('sandbox-custom-url').value = '';">
+              <option value="./secciones/noticias.html">./secciones/noticias.html (Página HTML Remota)</option>
+              <option value="./secciones/reporte.html">./secciones/reporte.html (Página de Reporte)</option>
+              <option value="./secciones/pagina-inexistente.html">./secciones/pagina-inexistente.html (Ruta Inexistente)</option>
+              <option value="/api/telemetria">/api/telemetria (Endpoint JSON)</option>
+              <option value="./index.html">./index.html (App Shell en Caché)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="sandbox-custom-url" class="form-label">O escribe una ruta personalizada:</label>
+            <input type="text" id="sandbox-custom-url" class="custom-input" placeholder="Ej: ./articulos/especial.html">
+          </div>
+
+          <button class="btn btn-primary" onclick="runSandboxTest()">
+            🚀 Ejecutar Interceptor Fetch
+          </button>
+
+          <div style="font-size: 0.82rem; color: #94a3b8; line-height: 1.5; margin-top: 0.5rem;">
+            💡 <strong>Instrucción de prueba:</strong> Para ver el fallback en acción en el visor derecho, ve a Chrome DevTools (<kbd>F12</kbd> ➡️ <strong>Network</strong>), activa <strong>Offline</strong>, y pulsa de nuevo el botón "Ejecutar Interceptor Fetch".
+          </div>
+        </div>
+
+        <!-- Visor de Respuesta del Sandbox -->
+        <div class="sandbox-preview-wrapper">
+          <div class="preview-bar">
+            <div class="preview-dots">
+              <span class="p-dot dot-red"></span>
+              <span class="p-dot dot-yellow"></span>
+              <span class="p-dot dot-green"></span>
+            </div>
+            <div id="preview-url-text" class="preview-url-box">./secciones/noticias.html</div>
+            <div style="display: flex; gap: 0.5rem;">
+              <span id="sandbox-status-badge" class="badge badge-emerald">200 OK</span>
+              <span id="sandbox-intercept-badge" class="badge badge-rose">Interceptor</span>
+            </div>
+          </div>
+
+          <!-- Iframe para renderizado HTML -->
+          <iframe id="sandbox-frame" class="sandbox-frame" title="Vista Previa de Intercepción"></iframe>
+          
+          <!-- Visor de texto JSON -->
+          <pre id="sandbox-json-view" class="sandbox-json-view" style="display: none;"></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         SECCIÓN 3: DIAGRAMA EXPLICATIVO DEL FLUJO DE FALLBACK
+         ==================================================================== -->
+    <section class="section-card">
+      <div class="section-header">
+        <div class="section-title-group">
+          <span class="section-icon">📐</span>
+          <div>
+            <h3 class="section-title">Flujo Lógico del Interceptor en el Evento 'fetch'</h3>
+            <p class="section-subtitle">
+              Cómo se procesa una solicitud de navegación cuando la red se encuentra inaccesible.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="diagram-flow">
+        <div class="diagram-step">
+          <span class="step-num">1</span>
+          <h4 class="step-title">Petición HTTP</h4>
+          <p class="step-desc">
+            El usuario intenta acceder a una URL dinámica del sitio (ej. <code>/secciones/noticias.html</code>).
+          </p>
+          <code class="step-code">event.request.mode === 'navigate'</code>
+        </div>
+
+        <div class="diagram-step">
+          <span class="step-num">2</span>
+          <h4 class="step-title">Consulta a la Red</h4>
+          <p class="step-desc">
+            El Service Worker intenta obtener los datos frescos del servidor con <code>fetch(request)</code>.
+          </p>
+          <code class="step-code">fetch(request).catch(err)</code>
+        </div>
+
+        <div class="diagram-step">
+          <span class="step-num">3</span>
+          <h4 class="step-title">Detección de Pérdida de Red</h4>
+          <p class="step-desc">
+            Si la promesa es rechazada (dispositivo offline), se captura el error y se busca en caché.
+          </p>
+          <code class="step-code">caches.match(request) // null</code>
+        </div>
+
+        <div class="diagram-step">
+          <span class="step-num">4</span>
+          <h4 class="step-title">Renderizado de offline.html</h4>
+          <p class="step-desc">
+            Al no existir en caché, el SW sirve la plantilla HTML personalizada de modo sin conexión con status 200.
+          </p>
+          <code class="step-code">return caches.match('./offline.html')</code>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         SECCIÓN 4: GUÍA DE VERIFICACIÓN EN CHROME DEVTOOLS
+         ==================================================================== -->
+    <section id="devtools-guide" class="section-card">
+      <div class="section-header">
+        <div class="section-title-group">
+          <span class="section-icon">🛠️</span>
+          <div>
+            <h3 class="section-title">Guía de Pruebas con Google Chrome DevTools</h3>
+            <p class="section-subtitle">Pasos para verificar la intercepción del evento fetch y la plantilla offline.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="devtools-guide-grid">
+        <div class="devtools-card">
+          <div class="devtools-header">
+            <span style="font-size: 1.4rem;">📱</span>
+            <h4 class="devtools-title">1. Cache Storage</h4>
+          </div>
+          <ul class="devtools-list">
+            <li>Presiona <kbd>F12</kbd> y selecciona la pestaña <strong>Application</strong>.</li>
+            <li>En <strong>Cache Storage ➡️ pwa-offline-fallback-v1.0.0</strong>, confirma que existe el archivo <strong><code>offline.html</code></strong> precargado en el evento <code>install</code>.</li>
+          </ul>
+        </div>
+
+        <div class="devtools-card">
+          <div class="devtools-header">
+            <span style="font-size: 1.4rem;">🔌</span>
+            <h4 class="devtools-title">2. Activar Modo Offline</h4>
+          </div>
+          <ul class="devtools-list">
+            <li>Ve a la pestaña <strong>Network</strong> en DevTools.</li>
+            <li>En el selector de velocidad (por defecto <code>No throttling</code>), selecciona <strong><code>Offline</code></strong>.</li>
+            <li>Observa cómo el indicador de la app cambia automáticamente a <strong>"Sin Conexión (Offline)"</strong>.</li>
+          </ul>
+        </div>
+
+        <div class="devtools-card">
+          <div class="devtools-header">
+            <span style="font-size: 1.4rem;">🚨</span>
+            <h4 class="devtools-title">3. Navegar a Ruta No Cacheada</h4>
+          </div>
+          <ul class="devtools-list">
+            <li>Estando en <strong>Offline</strong>, haz clic en el botón <strong>"Navegar a Noticias"</strong> en la tarjeta 2.</li>
+            <li><strong>¡Resultado!</strong> En vez de la pantalla de error del navegador, verás la plantilla personalizada <strong><code>offline.html</code></strong> con su baliza animada y estado 200.</li>
+            <li>Al volver a activar <code>No throttling</code> (Online), la plantilla detecta la conexión y se recarga automáticamente.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         SECCIÓN 5: CONSOLA DE TELEMETRÍA EN VIVO
+         ==================================================================== -->
+    <section class="section-card">
+      <div class="section-header">
+        <div class="section-title-group">
+          <span class="section-icon">📟</span>
+          <div>
+            <h3 class="section-title">Consola de Eventos y Telemetría en Vivo</h3>
+            <p class="section-subtitle">Registro en tiempo real del ciclo de vida del Service Worker y las peticiones interceptadas.</p>
+          </div>
+        </div>
+
+        <button class="btn btn-xs btn-outline" onclick="clearConsoleLog()">Limpiar Registro</button>
+      </div>
+
+      <div class="live-console-wrapper">
+        <div class="console-bar">
+          <span class="console-title">TERMINAL DE EVENTOS &bull; SW.JS FETCH INTERCEPTOR</span>
+          <span style="font-family: var(--font-mono); font-size: 0.72rem; color: #64748b;">scope: ./</span>
+        </div>
+        <div id="live-console-output" class="console-output"></div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         PIE DE PÁGINA
+         ==================================================================== -->
+    <footer class="app-footer">
+      <p>Actividad 5 &bull; Interceptor de Peticiones y Manejo de Estado Offline &bull; Estándar W3C</p>
+      <p style="margin-top: 0.35rem; font-size: 0.75rem; color: #475569;">
+        Desarrollado para entornos de aprendizaje en Progressive Web Apps (PWA).
+      </p>
+    </footer>
+
+  </div>
+
+  <!-- Script del cliente -->
+  <script src="./app.js"></script>
+</body>
+</html>

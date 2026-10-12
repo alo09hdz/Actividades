@@ -1,0 +1,26 @@
+{
+  "name": "Offline Fallback & Request Interceptor PWA",
+  "short_name": "OfflineFallback",
+  "description": "Interceptor de peticiones fetch y plantilla HTML personalizada de Modo Sin Conexión",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0a0f1d",
+  "theme_color": "#f43f5e",
+  "orientation": "portrait-primary",
+  "scope": "./",
+  "categories": ["education", "developer", "utilities"],
+  "icons": [
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
