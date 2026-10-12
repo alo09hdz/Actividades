@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Actividad 4: Cache API y Estrategia Cache-First (App Shell)</title>
+  
+  <!-- PWA & SEO Meta Tags -->
+  <meta name="description" content="Demostración y auditoría interactiva de Cache API, almacenamiento del App Shell durante el evento install y estrategia de caché estática Cache-First en Service Worker.">
+  <meta name="theme-color" content="#06b6d4">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" type="image/png" href="./icons/icon-192.png">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+
+  <!-- Estilos del App Shell -->
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+
+  <!-- ====================================================================
+       APP SHELL: ENCABEZADO PERSISTENTE (HEADER)
+       ==================================================================== -->
+  <header class="app-header">
+    <div class="header-inner">
+      <a href="./" class="brand-section" title="Recargar App Shell">
+        <img src="./img/app-logo.png" alt="CacheFirst Logo" class="brand-logo-img">
+        <div class="brand-text">
+          <h1>PWA Cache-First Explorer</h1>
+          <p>Actividad 4 &bull; Cache API &amp; App Shell Persistence</p>
+        </div>
+      </a>
+
+      <div class="header-status-group">
+        <div id="sw-status-badge" class="badge badge-warning" title="Estado del Service Worker">
+          <span class="pulse-dot"></span> Verificando SW...
+        </div>
+        <div id="network-status-badge" class="badge badge-success" title="Conectividad de Red">
+          <span class="pulse-dot"></span> En Línea
+        </div>
+        <button id="btn-sim-offline" class="btn btn-sm btn-outline" onclick="toggleSimulatedOffline()">
+          Simular Modo Offline
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ====================================================================
+       CONTENEDOR PRINCIPAL
+       ==================================================================== -->
+  <div class="app-container">
+
+    <!-- Alerta de Modo Offline Simulado -->
+    <div id="offline-simulation-banner" class="simulation-alert" style="display: none;">
+      <div class="sim-content">
+        <span class="sim-icon">⚠️</span>
+        <div>
+          <strong>Modo Offline Simulado Activo:</strong>
+          <span>Todas las peticiones del App Shell son servidas de inmediato desde la <strong>Cache API</strong> sin tocar la red externa.</span>
+        </div>
+      </div>
+      <button class="btn btn-xs btn-primary" onclick="toggleSimulatedOffline()">Restaurar Red</button>
+    </div>
+
+    <!-- ====================================================================
+         HERO SECTION: ARQUITECTURA APP SHELL & BANNER
+         ==================================================================== -->
+    <section class="hero-card">
+      <div class="hero-grid">
+        <div class="hero-text-content">
+          <div class="hero-tag">
+            <span>⚡ W3C Cache API Standard</span>
+            <span>&bull;</span>
+            <span>Estrategia Estática (Cache-First)</span>
+          </div>
+          <h2 class="hero-title">Almacenamiento del App Shell en Evento Install</h2>
+          <p class="hero-desc">
+            La arquitectura <strong>Cache-First</strong> intercepta cada solicitud estática en el Service Worker. 
+            Durante la fase de <code>install</code>, la <strong>Cache API</strong> descarga y persiste de forma atómica 
+            el HTML, CSS, JavaScript e imágenes base. En cada evento <code>fetch</code> posterior, el recurso se sirve 
+            directamente desde la memoria local con tiempos de respuesta menores a <strong>5 ms</strong>.
+          </p>
+          <div class="hero-actions">
+            <button class="btn btn-primary" onclick="testBenchmarkResource('./style.css')">
+              ⚡ Probar Cache-First Ahora
+            </button>
+            <button class="btn btn-outline" onclick="loadCacheStorageContents()">
+              🔍 Inspeccionar Cache Storage
+            </button>
+            <a href="#devtools-guide" class="btn btn-outline">
+              🛠️ Guía Chrome DevTools
+            </a>
+          </div>
+        </div>
+
+        <div class="hero-banner-preview">
+          <img src="./img/shell-banner.png" alt="App Shell Banner" class="shell-banner-img">
+          <span class="banner-caption">Recurso estático precacheado en: <code>img/shell-banner.png</code></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         MÉTRICAS EN TIEMPO REAL DEL APP SHELL & SERVICE WORKER
+         ==================================================================== -->
+    <section class="metrics-row">
+      <div class="metric-card">
+        <div class="metric-icon-box icon-cyan">📦</div>
+        <div class="metric-info">
+          <span class="metric-label">Memoria Caché Activa</span>
+          <strong id="cache-name-display" class="metric-value">appshell-cache-v1.0.0</strong>
+          <span class="metric-sub">Nombre en Cache Storage</span>
+        </div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-icon-box icon-emerald">📑</div>
+        <div class="metric-info">
+          <span class="metric-label">Recursos Precacheados</span>
+          <strong id="cache-count-badge" class="metric-value">0 recursos</strong>
+          <span class="metric-sub">App Shell (HTML, CSS, JS, IMG)</span>
+        </div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-icon-box icon-purple">💾</div>
+        <div class="metric-info">
+          <span class="metric-label">Tamaño Estimado</span>
+          <strong id="cache-size-badge" class="metric-value">0 KB</strong>
+          <span class="metric-sub">Ocupación local offline</span>
+        </div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-icon-box icon-amber">🛡️</div>
+        <div class="metric-info">
+          <span class="metric-label">Service Worker</span>
+          <strong id="sw-state-text" class="metric-value">INICIALIZANDO</strong>
+          <span id="sw-controller-text" class="metric-sub">Comprobando controller...</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         SECCIÓN 1: EXPLORADOR EN VIVO DE CACHE STORAGE (CACHE API)
+         ==================================================================== -->
+    <section class="section-card">
+      <div class="section-header">
+        <div class="section-title-group">
+          <span class="section-icon">🗂️</span>
+          <div>
+            <h3 class="section-title">Inventario de Recursos del App Shell en Cache Storage</h3>
+            <p class="section-subtitle">
+              Recursos almacenados en memoria mediante <code>caches.open()</code> y <code>cache.addAll()</code> durante el ciclo <code>install</code>.
+            </p>
+          </div>
+        </div>
+
+        <div class="header-actions">
+          <button class="btn btn-sm btn-outline" onclick="loadCacheStorageContents()" title="Sincronizar tabla con Cache Storage">
+            🔄 Refrescar
+          </button>
+          <button class="btn btn-sm btn-outline" onclick="reinstallAppShell()" title="Precachear manualmente los recursos">
+            📥 Precachear Shell
+          </button>
+          <button class="btn btn-sm btn-danger" onclick="clearCacheStorage()" title="Vaciar la caché">
+            🗑️ Vaciar Caché
+          </button>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="cache-table">
+          <thead>
+            <tr>
+              <th>Recurso / Archivo</th>
+              <th>Clasificación</th>
+              <th>Estado HTTP</th>
+              <th>Tamaño</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="cache-entries-body">
+            <tr>
+              <td colspan="5" class="table-empty">
+                <div class="empty-state">
+                  <span class="empty-icon">⏳</span>
+                  <p>Consultando la Cache API del navegador...</p>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         SECCIÓN 2: LABORATORIO INTERACTIVO DE ESTRATEGIA CACHE-FIRST
+         ==================================================================== -->
+    <section class="section-card">
+      <div class="section-header">
+        <div class="section-title-group">
+          <span class="section-icon">⚡</span>
+          <div>
+            <h3 class="section-title">Laboratorio de Latencia y Verificación Cache-First</h3>
+            <p class="section-subtitle">
+              Mide la diferencia de rendimiento entre un recurso servido desde la <strong>Cache API</strong> vs la <strong>Red Externa</strong>.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="benchmark-grid">
+        <!-- Panel de Control del Test -->
+        <div class="benchmark-control-panel">
+          <div class="form-group">
+            <label for="benchmark-select" class="form-label">Selecciona el recurso a evaluar:</label>
+            <select id="benchmark-select" class="custom-select">
+              <optgroup label="Recursos Estáticos del App Shell (Cache-First)">
+                <option value="./style.css">style.css (Hoja de Estilos App Shell)</option>
+                <option value="./app.js">app.js (Lógica del Cliente)</option>
+                <option value="./manifest.json">manifest.json (Web App Manifest)</option>
+                <option value="./img/app-logo.png">img/app-logo.png (Imagen Base del Logo)</option>
+                <option value="./img/shell-banner.png">img/shell-banner.png (Banner de Ilustración)</option>
+                <option value="./icons/icon-192.png">icons/icon-192.png (Icono PWA 192px)</option>
+              </optgroup>
+              <optgroup label="Recurso de Red Externa (Network Fallback / Contraste)">
+                <option value="/api/simulated-network">/api/simulated-network (Endpoint con retardo de red)</option>
+              </optgroup>
+            </select>
+          </div>
+
+          <button class="btn btn-primary" onclick="testBenchmarkResource()">
+            🚀 Ejecutar Solicitud HTTP con Benchmark
+          </button>
+
+          <div class="step-desc" style="font-size: 0.8rem; margin-top: 0.5rem;">
+            💡 <em>Tip: Al evaluar un recurso estático del App Shell, el Service Worker responderá con un tiempo habitualmente menor a 5 ms (Cache HIT). Si evalúas el endpoint de red, recurrirá al servidor con latencia mayor a 250 ms (Network).</em>
+          </div>
+        </div>
+
+        <!-- Tarjeta de Resultados del Test -->
+        <div id="benchmark-result" class="benchmark-result-card">
+          <div class="result-header">
+            <span class="res-metric-label">Última Prueba Realizada</span>
+            <span id="res-tested-url" class="tested-url-label">./style.css</span>
+          </div>
+
+          <div class="result-metrics-grid">
+            <div class="res-metric-item">
+              <span class="res-metric-label">Tiempo de Respuesta</span>
+              <strong id="res-latency" class="metric-val hit">-- ms</strong>
+            </div>
+
+            <div class="res-metric-item">
+              <span class="res-metric-label">Origen de Respuesta</span>
+              <div id="res-source" style="margin-top: 0.35rem;">
+                <span class="badge badge-emerald">Listo para probar</span>
+              </div>
+            </div>
+
+            <div class="res-metric-item">
+              <span class="res-metric-label">Código HTTP</span>
+              <strong id="res-status" style="font-family: var(--font-mono); font-size: 1.1rem; color: #f8fafc; margin-top: 0.2rem;">200 OK</strong>
+            </div>
+
+            <div class="res-metric-item">
+              <span class="res-metric-label">Estrategia Aplicada</span>
+              <strong style="font-family: var(--font-mono); font-size: 1.1rem; color: var(--cyan-bright); margin-top: 0.2rem;">Cache-First</strong>
+            </div>
+          </div>
+
+          <div class="progress-track" title="Indicador visual de latencia">
+            <div id="benchmark-bar" class="progress-bar bg-emerald" style="width: 10%;"></div>
+          </div>
+
+          <!-- Historial de ejecuciones -->
+          <div class="benchmark-history">
+            <div class="history-title">Historial Reciente de Peticiones:</div>
+            <div id="benchmark-history-list" class="history-list">
+              <div style="font-size: 0.78rem; color: #64748b;">Aún no has ejecutado pruebas. Haz clic en "Ejecutar Solicitud" arriba.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         SECCIÓN 3: DIAGRAMA EXPLICATIVO DEL FLUJO CACHE-FIRST
+         ==================================================================== -->
+    <section class="section-card">
+      <div class="section-header">
+        <div class="section-title-group">
+          <span class="section-icon">📐</span>
+          <div>
+            <h3 class="section-title">Diagrama de Arquitectura y Ciclo de Vida</h3>
+            <p class="section-subtitle">
+              Cómo interactúan el evento <code>install</code>, la <strong>Cache API</strong> y el evento <code>fetch</code> en la PWA.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="diagram-flow">
+        <div class="diagram-step">
+          <span class="step-num">1</span>
+          <h4 class="step-title">Evento 'install'</h4>
+          <p class="step-desc">
+            El navegador detecta el nuevo Service Worker. Se ejecuta <code>event.waitUntil()</code> para garantizar la instalación limpia.
+          </p>
+          <code class="step-code">caches.open(CACHE_NAME)</code>
+        </div>
+
+        <div class="diagram-step">
+          <span class="step-num">2</span>
+          <h4 class="step-title">Precacheo del App Shell</h4>
+          <p class="step-desc">
+            Descarga atómica de todos los recursos esenciales (HTML, CSS, JS e imágenes base) hacia la memoria Cache Storage.
+          </p>
+          <code class="step-code">cache.addAll(STATIC_ASSETS)</code>
+        </div>
+
+        <div class="diagram-step">
+          <span class="step-num">3</span>
+          <h4 class="step-title">Intercepción 'fetch'</h4>
+          <p class="step-desc">
+            Toda petición GET entrante es capturada por el Service Worker mediante <code>event.respondWith()</code>.
+          </p>
+          <code class="step-code">caches.match(event.request)</code>
+        </div>
+
+        <div class="diagram-step">
+          <span class="step-num">4</span>
+          <h4 class="step-title">Cache-First &amp; Fallback</h4>
+          <p class="step-desc">
+            Si existe en caché (HIT), se devuelve en &lt;5ms. Si no existe (MISS), se consulta la red (Network Fallback).
+          </p>
+          <code class="step-code">cachedResponse || fetch(req)</code>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         SECCIÓN 4: GUÍA PASO A PASO PARA GOOGLE CHROME DEVTOOLS
+         ==================================================================== -->
+    <section id="devtools-guide" class="section-card">
+      <div class="section-header">
+        <div class="section-title-group">
+          <span class="section-icon">🛠️</span>
+          <div>
+            <h3 class="section-title">Guía de Verificación con Google Chrome DevTools</h3>
+            <p class="section-subtitle">
+              Comprueba el funcionamiento de la Cache API y el comportamiento offline paso a paso.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="devtools-guide-grid">
+        <div class="devtools-card">
+          <div class="devtools-header">
+            <span style="font-size: 1.4rem;">📱</span>
+            <h4 class="devtools-title">1. Pestaña Application</h4>
+          </div>
+          <ul class="devtools-list">
+            <li>Presiona <kbd>F12</kbd> o <kbd>Ctrl + Shift + I</kbd> para abrir DevTools.</li>
+            <li>Selecciona la pestaña <strong>Application</strong> en el menú superior.</li>
+            <li>En el panel izquierdo, despliega <strong>Storage &gt; Cache Storage</strong>.</li>
+            <li>Haz clic en <strong><code>appshell-cache-v1.0.0</code></strong>: observarás todos los recursos estáticos del App Shell (HTML, CSS, JS, PNG).</li>
+          </ul>
+        </div>
+
+        <div class="devtools-card">
+          <div class="devtools-header">
+            <span style="font-size: 1.4rem;">🌐</span>
+            <h4 class="devtools-title">2. Pestaña Network (Red)</h4>
+          </div>
+          <ul class="devtools-list">
+            <li>Abre la pestaña <strong>Network</strong> en DevTools.</li>
+            <li>Recarga la página con <kbd>F5</kbd> o <kbd>Ctrl + R</kbd>.</li>
+            <li>En la columna <strong>Size</strong>, verifica que aparece <strong><code>(ServiceWorker)</code></strong> en lugar de bytes transferidos por red.</li>
+            <li>En la columna <strong>Time</strong>, confirma tiempos de respuesta ultrabajos (de 1 a 6 ms).</li>
+          </ul>
+        </div>
+
+        <div class="devtools-card">
+          <div class="devtools-header">
+            <span style="font-size: 1.4rem;">🔌</span>
+            <h4 class="devtools-title">3. Prueba Offline Real</h4>
+          </div>
+          <ul class="devtools-list">
+            <li>En la pestaña <strong>Network</strong>, localiza el selector de velocidad (por defecto <code>No throttling</code>).</li>
+            <li>Cámbialo a <strong><code>Offline</code></strong>.</li>
+            <li>Recarga la página completa con <kbd>Ctrl + F5</kbd>.</li>
+            <li>¡Observa cómo la interfaz y todas las imágenes cargan instantáneamente sin conexión a internet gracias al App Shell en caché!</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         SECCIÓN 5: CONSOLA DE REGISTROS EN VIVO
+         ==================================================================== -->
+    <section class="section-card">
+      <div class="section-header">
+        <div class="section-title-group">
+          <span class="section-icon">📟</span>
+          <div>
+            <h3 class="section-title">Consola de Eventos y Telemetría en Tiempo Real</h3>
+            <p class="section-subtitle">Registro de actividad del ciclo de vida del Service Worker y operaciones de Cache API.</p>
+          </div>
+        </div>
+
+        <button class="btn btn-xs btn-outline" onclick="clearConsoleLog()">Limpiar Registro</button>
+      </div>
+
+      <div class="live-console-wrapper">
+        <div class="console-bar">
+          <span class="console-title">TERMINAL DE EVENTOS &bull; SW.JS &amp; CACHE API</span>
+          <span id="sw-scope-text" style="font-family: var(--font-mono); font-size: 0.72rem; color: #64748b;">scope: ./</span>
+        </div>
+        <div id="live-console-output" class="console-output"></div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         PIE DE PÁGINA
+         ==================================================================== -->
+    <footer class="app-footer">
+      <p>Actividad 4 &bull; PWA Cache API &amp; Estrategia de Caché Estática (Cache-First) &bull; Estándar W3C</p>
+      <p style="margin-top: 0.35rem; font-size: 0.75rem; color: #475569;">
+        Desarrollado para entornos de aprendizaje en Aplicaciones Web Progresivas y persistencia sin conexión.
+      </p>
+    </footer>
+
+  </div>
+
+  <!-- ====================================================================
+       MODAL DE PREVISUALIZACIÓN DE RECURSOS EN CACHÉ
+       ==================================================================== -->
+  <div id="preview-modal" class="modal-backdrop" onclick="if(event.target === this) closePreviewModal()">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h4 id="modal-res-title" class="modal-title">Previsualizar Recurso en Caché</h4>
+        <button class="btn btn-xs btn-outline" onclick="closePreviewModal()">&times; Cerrar</button>
+      </div>
+      <div id="modal-res-body" class="modal-body">
+        <!-- Contenido dinámico generado por app.js -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Script principal del cliente -->
+  <script src="./app.js"></script>
+</body>
+</html>
