@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Nexus Data - Service Worker & Almacenamiento Offline</title>
+  <meta name="description" content="Lógica de Service Worker, estrategias Cache-First y Network-First, y persistencia asíncrona con IndexedDB en modo offline.">
+
+  <!-- Enlace al Web App Manifest -->
+  <link rel="manifest" href="manifest.json">
+
+  <!-- Metadatos de Color y Pantalla Completa para PWA -->
+  <meta name="theme-color" content="#10b981">
+  <meta name="background-color" content="#09121d">
+  <meta name="mobile-web-app-capable" content="yes">
+  
+  <!-- Soporte para iOS / Safari PWA -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="NexusData">
+  <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+  <link rel="apple-touch-icon" sizes="512x512" href="icons/icon-512x512.png">
+
+  <!-- Favicon e iconos estándar -->
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192x192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512x512.png">
+
+  <!-- Estilos del App Shell -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="app-body">
+
+  <!-- Banner de Modo Offline Activo -->
+  <div class="offline-banner" id="offline-banner">
+    <div class="offline-banner-content">
+      <span class="offline-pulse-dot"></span>
+      <span><strong>Modo Offline Activo:</strong> Operando 100% con datos locales de <strong>IndexedDB</strong> y recursos estáticos de <strong>Cache Storage</strong>.</span>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 1. HEADER DEL APP SHELL                   -->
+  <!-- ========================================== -->
+  <header class="app-header" id="app-header">
+    <div class="header-left">
+      <!-- Botón Menú Móvil -->
+      <button class="icon-btn mobile-menu-toggle" id="btn-toggle-menu" aria-label="Abrir Menú de Navegación">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+
+      <!-- Logotipo y Marca -->
+      <div class="brand-container" id="brand-logo">
+        <div class="brand-icon">
+          <img src="icons/icon-192x192.png" alt="Logo Nexus Data" width="36" height="36">
+        </div>
+        <div class="brand-text">
+          <span class="brand-title">Nexus<span class="gradient-emerald">Data</span></span>
+          <span class="brand-tag">SW & IndexedDB</span>
+        </div>
+      </div>
+
+      <!-- Migas de Pan / Estado de Navegación -->
+      <div class="header-breadcrumbs desktop-only">
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-current" id="header-current-view">Ciclo de Vida del Service Worker</span>
+      </div>
+    </div>
+
+    <!-- Indicadores de Estado y Acciones Rápidas -->
+    <div class="header-right">
+      <!-- Píldora de Red en Vivo -->
+      <div class="status-pill" id="network-pill" title="Estado de conectividad del navegador">
+        <span class="status-indicator-dot online" id="net-indicator-dot"></span>
+        <span class="status-text" id="net-status-text">Online</span>
+      </div>
+
+      <!-- Píldora de Service Worker -->
+      <div class="status-pill sw-active-pill desktop-only" id="sw-status-pill" title="Estado del Service Worker">
+        <span class="sw-dot"></span>
+        <span id="sw-status-text">SW v3.0.0 Activo</span>
+      </div>
+
+      <!-- Toggle de Simulación Offline -->
+      <button class="btn btn-sm btn-offline-toggle" id="btn-toggle-sim-offline" type="button" title="Alternar simulación de desconexión sin apagar la red">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="1" y1="1" x2="23" y2="23"></line>
+          <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path>
+          <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path>
+          <path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path>
+          <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path>
+          <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+          <line x1="12" y1="20" x2="12.01" y2="20"></line>
+        </svg>
+        <span class="btn-text desktop-only" id="sim-offline-btn-text">Simular Offline</span>
+      </button>
+
+      <!-- Botón de Instalación PWA -->
+      <button class="btn btn-sm btn-install desktop-only" id="btn-install-pwa" type="button">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        <span>Instalar PWA</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ========================================== -->
+  <!-- 2. LAYOUT GENERAL (Sidebar + Main)         -->
+  <!-- ========================================== -->
+  <div class="app-layout">
+    
+    <!-- Menú Lateral de Navegación (Sidebar) -->
+    <aside class="app-sidebar" id="app-sidebar">
+      <div class="sidebar-inner">
+        
+        <div class="sidebar-category">SERVICE WORKER</div>
+        <nav class="sidebar-nav">
+          <a href="#sw-lifecycle" class="nav-item active" data-view="sw-lifecycle">
+            <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="23 4 23 10 17 10"></polyline>
+              <polyline points="1 20 1 14 7 14"></polyline>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
+            <span class="nav-label">Ciclo de Vida SW</span>
+            <span class="nav-badge status-check">v3.0</span>
+          </a>
+
+          <a href="#cache-strategies" class="nav-item" data-view="cache-strategies">
+            <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+              <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+              <line x1="12" y1="22.08" x2="12" y2="12"></line>
+            </svg>
+            <span class="nav-label">Estrategias de Caché</span>
+            <span class="nav-badge emerald">Test</span>
+          </a>
+        </nav>
+
+        <div class="sidebar-category">PERSISTENCIA & OFFLINE</div>
+        <nav class="sidebar-nav">
+          <a href="#indexeddb-crud" class="nav-item" data-view="indexeddb-crud">
+            <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+              <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
+              <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+            </svg>
+            <span class="nav-label">Gestor IndexedDB</span>
+            <span class="nav-badge" id="sidebar-db-count">0 items</span>
+          </a>
+
+          <a href="#sync-queue" class="nav-item" data-view="sync-queue">
+            <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M19 11v9a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h9"></path>
+              <polyline points="15 3 21 3 21 9"></polyline>
+              <line x1="10" y1="14" x2="21" y2="3"></line>
+            </svg>
+            <span class="nav-label">Cola Sincronización</span>
+            <span class="nav-badge amber" id="sidebar-pending-badge">0 pend.</span>
+          </a>
+
+          <a href="#storage-inspector" class="nav-item" data-view="storage-inspector">
+            <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+            <span class="nav-label">Visor de Storage</span>
+          </a>
+        </nav>
+
+        <!-- Tarjeta de Especificación en Sidebar -->
+        <div class="sidebar-storage-card">
+          <div class="storage-title">
+            <span class="indicator-emerald"></span>
+            <span>Almacenamiento Local</span>
+          </div>
+          <div class="storage-meter-bar">
+            <div class="storage-meter-fill" id="storage-meter-fill" style="width: 15%;"></div>
+          </div>
+          <div class="storage-specs-list">
+            <div class="spec-item">
+              <span>IndexedDB:</span>
+              <span class="spec-val" id="spec-db-val">NexusDataDB</span>
+            </div>
+            <div class="spec-item">
+              <span>Caché Estática:</span>
+              <span class="spec-val">nexus-static-v3.0.0</span>
+            </div>
+            <div class="spec-item">
+              <span>Caché Dinámica:</span>
+              <span class="spec-val">nexus-dynamic-v3.0.0</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- Fondo oscurecido para menú móvil -->
+    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+    <!-- ========================================== -->
+    <!-- 3. CONTENEDOR PRINCIPAL (<main>)          -->
+    <!-- ========================================== -->
+    <main class="app-main" id="main-content">
+      
+      <!-- ========================================== -->
+      <!-- VISTA 1: CICLO DE VIDA DEL SERVICE WORKER  -->
+      <!-- ========================================== -->
+      <section class="view-section active" id="view-sw-lifecycle">
+        <div class="hero-card">
+          <div class="hero-badge">
+            <span class="pulse-emerald">●</span>
+            <span>Actividad 3: Service Worker & Persistencia Offline</span>
+          </div>
+          <h1 class="hero-title">
+            Ciclo de Vida, Caché Avanzada & <span class="gradient-emerald">IndexedDB</span>
+          </h1>
+          <p class="hero-description">
+            Implementación completa del ciclo de vida del <strong>Service Worker</strong> (registro, instalación limpia con <code>skipWaiting()</code>, activación con <code>clients.claim()</code> y purga determinista de versiones previas). Incluye estrategias de caché separadas para recursos estáticos vs dinámicos y persistencia de base de datos relacional cliente en <strong>IndexedDB</strong>.
+          </p>
+
+          <div class="hero-quick-actions">
+            <button class="btn btn-primary" id="btn-goto-strategies">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                <line x1="12" y1="22.08" x2="12" y2="12"></line>
+              </svg>
+              Probar Estrategias de Caché
+            </button>
+            <button class="btn btn-outline" id="btn-goto-indexeddb">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+                <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
+                <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+              </svg>
+              Explorar Datos en IndexedDB
+            </button>
+          </div>
+        </div>
+
+        <!-- Métricas del Service Worker -->
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-title">Estado del Worker</span>
+              <span class="metric-badge success">En Ejecución</span>
+            </div>
+            <div class="metric-value" id="metric-sw-state">Activo (Active)</div>
+            <p class="metric-footer">Controlando el 100% de las solicitudes de red del cliente</p>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-title">Caché Estática</span>
+              <span class="metric-badge info">Precacheada</span>
+            </div>
+            <div class="metric-value">nexus-static-v3</div>
+            <p class="metric-footer">App Shell, CSS, JS e Iconos servidos con Cache-First</p>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-title">Registros en IndexedDB</span>
+              <span class="metric-badge accent" id="metric-db-badge">Base Local</span>
+            </div>
+            <div class="metric-value" id="metric-db-count">0 Items</div>
+            <p class="metric-footer">Persistencia asíncrona garantizada en modo offline</p>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-title">Estrategia Dinámica</span>
+              <span class="metric-badge warning">Network-First</span>
+            </div>
+            <div class="metric-value">API Fallback</div>
+            <p class="metric-footer">Red fresca prioritaria con respaldo automático en caché</p>
+          </div>
+        </div>
+
+        <!-- Diagrama del Ciclo de Vida del Service Worker -->
+        <div class="content-card">
+          <div class="card-header-flex">
+            <div>
+              <h2 class="card-title">Anatomía del Ciclo de Vida del Service Worker</h2>
+              <p class="card-subtitle">Flujo determinista de instalación, activación y control sin bloqueos</p>
+            </div>
+            <div class="card-actions">
+              <button class="btn btn-sm btn-secondary" id="btn-force-sw-update">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="23 4 23 10 17 10"></polyline>
+                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                </svg>
+                Forzar Re-registro
+              </button>
+            </div>
+          </div>
+
+          <div class="lifecycle-timeline">
+            <!-- Paso 1: Registro -->
+            <div class="timeline-step passed">
+              <div class="step-badge">1</div>
+              <div class="step-card">
+                <h4>Fase de Registro (Registration)</h4>
+                <code>navigator.serviceWorker.register('./sw.js')</code>
+                <p>El navegador descarga el script en un hilo en segundo plano (Web Worker), aislado del hilo de interfaz de usuario (DOM).</p>
+                <div class="step-tag">Ámbito: /act3/</div>
+              </div>
+            </div>
+
+            <!-- Paso 2: Instalación -->
+            <div class="timeline-step passed">
+              <div class="step-badge">2</div>
+              <div class="step-card">
+                <h4>Instalación Limpia & Pre-cacheo</h4>
+                <code>self.skipWaiting() & caches.addAll(...)</code>
+                <p>Se almacena en caché atómicamente el App Shell estático (HTML, CSS, JS e Iconos). <code>skipWaiting()</code> previene que el worker quede en espera (waiting).</p>
+                <div class="step-tag">Caché: nexus-static-v3</div>
+              </div>
+            </div>
+
+            <!-- Paso 3: Activación -->
+            <div class="timeline-step passed">
+              <div class="step-badge">3</div>
+              <div class="step-card">
+                <h4>Activación & Limpieza de Versiones Previas</h4>
+                <code>caches.keys() + caches.delete() + clients.claim()</code>
+                <p>Se eliminan todas las versiones obsoletas de la caché. <code>clients.claim()</code> toma control inmediato de las pestañas sin requerir recargar la página.</p>
+                <div class="step-tag">Control: Inmediato</div>
+              </div>
+            </div>
+
+            <!-- Paso 4: Fetch Interceptor -->
+            <div class="timeline-step passed">
+              <div class="step-badge">4</div>
+              <div class="step-card">
+                <h4>Intercepción de Red (fetch event)</h4>
+                <code>event.respondWith(...)</code>
+                <p>El Service Worker actúa como un proxy de red programable: enruta recursos estáticos hacia Cache-First y endpoints dinámicos hacia Network-First.</p>
+                <div class="step-tag">Proxy Activo</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================= -->
+      <!-- VISTA 2: COMPARADOR DE ESTRATEGIAS DE CACHÉ EN VIVO     -->
+      <!-- ======================================================= -->
+      <section class="view-section" id="view-cache-strategies">
+        <div class="section-title-block">
+          <div class="badge-tag emerald">Módulo de Pruebas de Rendimiento</div>
+          <h2 class="section-heading">Estrategias de Caché para Recursos Estáticos vs Dinámicos</h2>
+          <p class="section-desc">
+            Prueba en vivo la diferencia de comportamiento, origen de los datos y velocidad de respuesta entre la estrategia <strong>Cache-First</strong> (para archivos fijos) y <strong>Network-First</strong> (para APIs y datos volátiles).
+          </p>
+        </div>
+
+        <div class="strategies-grid">
+          <!-- Tarjeta 1: Cache-First -->
+          <div class="strategy-card">
+            <div class="strategy-header">
+              <div class="strategy-icon icon-emerald">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                </svg>
+              </div>
+              <div>
+                <h3 class="strategy-name">Cache-First (Recursos Estáticos)</h3>
+                <span class="strategy-target">App Shell (style.css, app.js, db.js, icons)</span>
+              </div>
+            </div>
+
+            <div class="strategy-flow">
+              <div class="flow-pill">Solicitud</div>
+              <span class="flow-arrow">➔</span>
+              <div class="flow-pill highlight">¿Está en Caché?</div>
+              <span class="flow-arrow">➔</span>
+              <div class="flow-pill success">Retorna (0ms)</div>
+            </div>
+
+            <p class="strategy-explanation">
+              <strong>Propósito:</strong> Carga instantánea sin latencia. Si el archivo está en la caché local se sirve de inmediato. Solo si no existe acude a la red y lo guarda.
+            </p>
+
+            <button class="btn btn-primary btn-block" id="btn-test-cache-first">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+              Probar Petición Estática (style.css)
+            </button>
+
+            <!-- Caja de Resultados de Cache-First -->
+            <div class="test-result-box" id="res-cache-first">
+              <div class="res-row">
+                <span class="res-label">Origen de Respuesta:</span>
+                <span class="res-value" id="cf-source">Esperando prueba...</span>
+              </div>
+              <div class="res-row">
+                <span class="res-label">Tiempo de Respuesta:</span>
+                <span class="res-value" id="cf-time">-</span>
+              </div>
+              <div class="res-row">
+                <span class="res-label">URL Evaluada:</span>
+                <span class="res-value font-mono" id="cf-url">./style.css</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tarjeta 2: Network-First -->
+          <div class="strategy-card">
+            <div class="strategy-header">
+              <div class="strategy-icon icon-amber">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                  <polyline points="22,6 12,13 2,6"></polyline>
+                </svg>
+              </div>
+              <div>
+                <h3 class="strategy-name">Network-First con Cache Fallback</h3>
+                <span class="strategy-target">Recursos Dinámicos (/api/feed, JSON)</span>
+              </div>
+            </div>
+
+            <div class="strategy-flow">
+              <div class="flow-pill">Solicitud</div>
+              <span class="flow-arrow">➔</span>
+              <div class="flow-pill highlight">Red Primero</div>
+              <span class="flow-arrow">➔</span>
+              <div class="flow-pill alert">¿Fallo? Respaldo Caché</div>
+            </div>
+
+            <p class="strategy-explanation">
+              <strong>Propósito:</strong> Datos siempre frescos cuando hay conexión. Si el dispositivo se queda sin red (offline), el Service Worker sirve automáticamente la última respuesta almacenada o un fallback offline estructurado.
+            </p>
+
+            <button class="btn btn-outline btn-block" id="btn-test-network-first">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+              Probar Petición Dinámica (/api/feed)
+            </button>
+
+            <!-- Caja de Resultados de Network-First -->
+            <div class="test-result-box" id="res-network-first">
+              <div class="res-row">
+                <span class="res-label">Origen de Respuesta:</span>
+                <span class="res-value" id="nf-source">Esperando prueba...</span>
+              </div>
+              <div class="res-row">
+                <span class="res-label">Tiempo de Respuesta:</span>
+                <span class="res-value" id="nf-time">-</span>
+              </div>
+              <div class="res-row">
+                <span class="res-label">Contenido / Timestamp:</span>
+                <span class="res-value font-mono" id="nf-content">-</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================= -->
+      <!-- VISTA 3: GESTOR DE DATOS OFFLINE CON INDEXEDDB          -->
+      <!-- ======================================================= -->
+      <section class="view-section" id="view-indexeddb-crud">
+        <div class="section-title-block">
+          <div class="badge-tag emerald">Persistencia Cliente No Relacional</div>
+          <h2 class="section-heading">Gestor de Datos Asíncrono con IndexedDB</h2>
+          <p class="section-desc">
+            Base de datos cliente que permite operaciones completas de lectura, creación y eliminación en modo offline. Los registros guardados sin conexión reciben automáticamente el estado <code>pending</code> para ser sincronizados al recuperar internet.
+          </p>
+        </div>
+
+        <div class="crud-layout">
+          <!-- Columna Formulario para Nuevo Registro -->
+          <div class="content-card form-card">
+            <h3 class="card-title">Nuevo Registro Local</h3>
+            <p class="card-subtitle">Se inserta de forma transaccional en el almacén <code>records</code></p>
+
+            <form id="form-new-record" class="crud-form">
+              <div class="form-group">
+                <label for="record-title">Título del Registro:</label>
+                <input type="text" id="record-title" class="form-input" placeholder="Ej. Reporte de Rendimiento #42" required>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="record-category">Categoría:</label>
+                  <select id="record-category" class="form-select">
+                    <option value="Operaciones">Operaciones</option>
+                    <option value="Caché & Red">Caché & Red</option>
+                    <option value="Sincronización">Sincronización</option>
+                    <option value="Seguridad">Seguridad</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="record-priority">Prioridad:</label>
+                  <select id="record-priority" class="form-select">
+                    <option value="Alta">Alta</option>
+                    <option value="Media" selected>Media</option>
+                    <option value="Baja">Baja</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="record-desc">Descripción / Datos:</label>
+                <textarea id="record-desc" class="form-textarea" rows="3" placeholder="Información que persistirá en el navegador incluso sin conexión..."></textarea>
+              </div>
+
+              <button type="submit" class="btn btn-primary btn-block" id="btn-save-record">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                  <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                  <polyline points="7 3 7 8 15 8"></polyline>
+                </svg>
+                Guardar en IndexedDB
+              </button>
+            </form>
+          </div>
+
+          <!-- Columna Lista de Registros con Filtros -->
+          <div class="content-card list-card">
+            <div class="card-header-flex">
+              <div>
+                <h3 class="card-title">Registros Almacenados</h3>
+                <p class="card-subtitle" id="records-counter-text">Cargando datos desde IndexedDB...</p>
+              </div>
+              
+              <!-- Filtros de Categoría -->
+              <div class="filter-pills">
+                <button class="filter-pill active" data-filter="all">Todos</button>
+                <button class="filter-pill" data-filter="Operaciones">Operaciones</button>
+                <button class="filter-pill" data-filter="Caché & Red">Caché & Red</button>
+                <button class="filter-pill" data-filter="Sincronización">Sincronización</button>
+              </div>
+            </div>
+
+            <!-- Contenedor dinámico de tarjetas de IndexedDB -->
+            <div class="records-list" id="records-list-container">
+              <!-- Renderizado dinámico desde db.js -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================= -->
+      <!-- VISTA 4: COLA DE SINCRONIZACIÓN Y SIMULADOR OFFLINE     -->
+      <!-- ======================================================= -->
+      <section class="view-section" id="view-sync-queue">
+        <div class="section-title-block">
+          <div class="badge-tag amber">Mecanismo de Reconciliación</div>
+          <h2 class="section-heading">Cola de Sincronización (Offline Sync)</h2>
+          <p class="section-desc">
+            Gestiona los registros creados durante períodos de desconexión y propágalos al servidor central cuando la conexión se restablezca.
+          </p>
+        </div>
+
+        <div class="sync-dashboard-grid">
+          <!-- Tarjeta de Estado de Sincronización -->
+          <div class="content-card">
+            <div class="card-header-flex">
+              <h3 class="card-title">Estado de la Cola</h3>
+              <button class="btn btn-sm btn-primary" id="btn-sync-now">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="23 4 23 10 17 10"></polyline>
+                  <polyline points="1 20 1 14 7 14"></polyline>
+                  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                </svg>
+                Sincronizar Lote Ahora
+              </button>
+            </div>
+
+            <div class="sync-status-banner" id="sync-banner-alert">
+              <div class="sync-banner-icon" id="sync-icon-symbol">⏳</div>
+              <div class="sync-banner-text">
+                <h4 id="sync-banner-title">0 Elementos Pendientes</h4>
+                <p id="sync-banner-desc">Todos los registros locales están sincronizados con la nube.</p>
+              </div>
+            </div>
+
+            <!-- Lista de elementos pendientes -->
+            <div class="pending-items-box" id="pending-items-container">
+              <!-- Renderizado de items con syncStatus = pending -->
+            </div>
+          </div>
+
+          <!-- Tarjeta de Reglas de Sincronización -->
+          <div class="content-card">
+            <h3 class="card-title">Reglas de Sincronización Asíncrona</h3>
+            <p class="card-subtitle">Flujo de trabajo para garantizar integridad de datos</p>
+
+            <div class="sync-rules-list">
+              <div class="rule-item">
+                <div class="rule-num">1</div>
+                <div class="rule-text">
+                  <strong>Creación Offline Ininterrumpida:</strong>
+                  <p>Cualquier operación de escritura se almacena inmediatamente en IndexedDB con el metadato <code>syncStatus: "pending"</code>.</p>
+                </div>
+              </div>
+
+              <div class="rule-item">
+                <div class="rule-num">2</div>
+                <div class="rule-text">
+                  <strong>Detección de Re-conexión:</strong>
+                  <p>El evento <code>window.addEventListener('online')</code> se activa automáticamente al recuperar la señal de red.</p>
+                </div>
+              </div>
+
+              <div class="rule-item">
+                <div class="rule-num">3</div>
+                <div class="rule-text">
+                  <strong>Transmisión en Lote (Batch):</strong>
+                  <p>Se realiza una petición <code>POST /api/sync</code> con todos los registros pendientes hacia el servidor central.</p>
+                </div>
+              </div>
+
+              <div class="rule-item">
+                <div class="rule-num">4</div>
+                <div class="rule-text">
+                  <strong>Actualización Transaccional:</strong>
+                  <p>Una vez confirmada la respuesta del servidor, los registros en IndexedDB se actualizan a <code>syncStatus: "synced"</code>.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================= -->
+      <!-- VISTA 5: VISOR DE ALMACENAMIENTO (Cache API & IndexedDB) -->
+      <!-- ======================================================= -->
+      <section class="view-section" id="view-storage-inspector">
+        <div class="section-title-block">
+          <div class="badge-tag info">Herramienta de Diagnóstico Interno</div>
+          <h2 class="section-heading">Inspector de Almacenamiento en Vivo</h2>
+          <p class="section-desc">
+            Visualiza en tiempo real los contenedores de la <strong>Cache API</strong> y el almacén de objetos de <strong>IndexedDB</strong> directamente desde la interfaz.
+          </p>
+        </div>
+
+        <div class="content-card">
+          <div class="card-header-flex">
+            <div>
+              <h3 class="card-title">Cachés del Service Worker (Cache Storage)</h3>
+              <p class="card-subtitle">Inspección de claves activas gestionadas por <code>caches.open()</code></p>
+            </div>
+            <button class="btn btn-sm btn-secondary" id="btn-refresh-cache-list">
+              Actualizar Listado de Cachés
+            </button>
+          </div>
+
+          <div class="cache-buckets-list" id="cache-buckets-container">
+            <!-- Renderizado dinámico de cachés -->
+          </div>
+        </div>
+
+        <div class="content-card">
+          <div class="card-header-flex">
+            <div>
+              <h3 class="card-title">Estructura del Esquema IndexedDB</h3>
+              <p class="card-subtitle">Base de datos: <code>NexusDataDB</code> (v1) | Almacén: <code>records</code></p>
+            </div>
+            <button class="btn btn-sm btn-secondary" id="btn-seed-data">
+              Sembrar Datos Demo Iniciales
+            </button>
+          </div>
+
+          <div class="schema-table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Nombre del Índice</th>
+                  <th>KeyPath</th>
+                  <th>Único</th>
+                  <th>Propósito</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>id (Primary Key)</code></td>
+                  <td><code>id</code></td>
+                  <td>Sí</td>
+                  <td>Identificador alfanumérico único por registro</td>
+                </tr>
+                <tr>
+                  <td><code>syncStatus</code></td>
+                  <td><code>syncStatus</code></td>
+                  <td>No</td>
+                  <td>Filtro de cola offline ('pending' / 'synced')</td>
+                </tr>
+                <tr>
+                  <td><code>category</code></td>
+                  <td><code>category</code></td>
+                  <td>No</td>
+                  <td>Agrupación de datos para la interfaz</td>
+                </tr>
+                <tr>
+                  <td><code>createdAt</code></td>
+                  <td><code>createdAt</code></td>
+                  <td>No</td>
+                  <td>Ordenamiento cronológico de auditoría</td>
+                </tr>
+                <tr>
+                  <td><code>priority</code></td>
+                  <td><code>priority</code></td>
+                  <td>No</td>
+                  <td>Clasificación de criticidad de negocio</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 4. MENÚ DE NAVEGACIÓN INFERIOR (MÓVIL)     -->
+  <!-- ========================================== -->
+  <nav class="app-bottom-nav" id="app-bottom-nav">
+    <a href="#sw-lifecycle" class="bnav-item active" data-view="sw-lifecycle">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 4 23 10 17 10"></polyline>
+        <polyline points="1 20 1 14 7 14"></polyline>
+        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+      </svg>
+      <span>Ciclo SW</span>
+    </a>
+    <a href="#cache-strategies" class="bnav-item" data-view="cache-strategies">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+        <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+        <line x1="12" y1="22.08" x2="12" y2="12"></line>
+      </svg>
+      <span>Estrategias</span>
+    </a>
+    <a href="#indexeddb-crud" class="bnav-item" data-view="indexeddb-crud">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+        <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
+        <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+      </svg>
+      <span>IndexedDB</span>
+    </a>
+    <a href="#sync-queue" class="bnav-item" data-view="sync-queue">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M19 11v9a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h9"></path>
+        <polyline points="15 3 21 3 21 9"></polyline>
+        <line x1="10" y1="14" x2="21" y2="3"></line>
+      </svg>
+      <span>Cola Sync</span>
+    </a>
+  </nav>
+
+  <!-- Sistema de Notificaciones Toast Flotantes -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="db.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
